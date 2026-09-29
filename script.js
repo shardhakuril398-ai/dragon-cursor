@@ -1,15 +1,16 @@
 const canvas = document.getElementById("dragonCanvas");
 const ctx = canvas.getContext("2d");
 
-let width;
-let height;
-let dpr;
+let width = window.innerWidth;
+let height = window.innerHeight;
+let dpr = window.devicePixelRatio || 1;
 
-function resizeCanvas() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+function resize() {
 
     width = window.innerWidth;
     height = window.innerHeight;
+
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     canvas.width = width * dpr;
     canvas.height = height * dpr;
@@ -20,13 +21,13 @@ function resizeCanvas() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
+window.addEventListener("resize", resize);
+resize();
 
 
-// ========================================
+// ======================================================
 // MOUSE
-// ========================================
+// ======================================================
 
 const mouse = {
     x: width / 2,
@@ -34,135 +35,360 @@ const mouse = {
 };
 
 window.addEventListener("pointermove", (event) => {
+
     mouse.x = event.clientX;
     mouse.y = event.clientY;
+
 });
 
 
-// ========================================
-// DRAGON SETTINGS
-// ========================================
+// ======================================================
+// DRAGON BODY
+// ======================================================
 
-const SEGMENTS = 32;
+const SEGMENTS = 36;
 
-const points = [];
+const dragon = [];
 
 for (let i = 0; i < SEGMENTS; i++) {
 
-    points.push({
+    dragon.push({
         x: mouse.x,
         y: mouse.y,
-        oldX: mouse.x,
-        oldY: mouse.y,
         angle: 0
     });
+
 }
 
 
-// ========================================
+// ======================================================
+// SPARKLES
+// ======================================================
+
+const sparkles = [];
+
+
+// ======================================================
 // HELPERS
-// ========================================
+// ======================================================
 
 function lerp(a, b, amount) {
     return a + (b - a) * amount;
 }
 
-
-function distance(x1, y1, x2, y2) {
-    return Math.hypot(x2 - x1, y2 - y1);
+function random(min, max) {
+    return Math.random() * (max - min) + min;
 }
 
 
-function angleBetween(x1, y1, x2, y2) {
-    return Math.atan2(y2 - y1, x2 - x1);
-}
-
-
-// ========================================
+// ======================================================
 // UPDATE DRAGON
-// ========================================
+// ======================================================
 
 function updateDragon() {
 
-    // Head follows cursor
-    points[0].oldX = points[0].x;
-    points[0].oldY = points[0].y;
+    // HEAD
+    dragon[0].x = lerp(
+        dragon[0].x,
+        mouse.x,
+        0.20
+    );
 
-    points[0].x = lerp(points[0].x, mouse.x, 0.22);
-    points[0].y = lerp(points[0].y, mouse.y, 0.22);
+    dragon[0].y = lerp(
+        dragon[0].y,
+        mouse.y,
+        0.20
+    );
 
 
-    // Every body segment follows previous segment
+    // BODY
     for (let i = 1; i < SEGMENTS; i++) {
 
-        const previous = points[i - 1];
-        const current = points[i];
-
-        current.oldX = current.x;
-        current.oldY = current.y;
+        const current = dragon[i];
+        const previous = dragon[i - 1];
 
         const dx = previous.x - current.x;
         const dy = previous.y - current.y;
 
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
 
-        const targetDistance = 17 + i * 0.15;
+        const distance = 15 + i * 0.25;
 
-        if (dist > targetDistance) {
+        current.x = lerp(
+            current.x,
+            previous.x - Math.cos(angle) * distance,
+            0.35
+        );
 
-            const angle = Math.atan2(dy, dx);
+        current.y = lerp(
+            current.y,
+            previous.y - Math.sin(angle) * distance,
+            0.35
+        );
 
-            current.x =
-                previous.x -
-                Math.cos(angle) * targetDistance;
+        current.angle = angle;
+    }
 
-            current.y =
-                previous.y -
-                Math.sin(angle) * targetDistance;
+}
+
+
+// ======================================================
+// SPARKLE CREATION
+// ======================================================
+
+function createSparkle() {
+
+    const tail = dragon[SEGMENTS - 1];
+
+    sparkles.push({
+
+        x: tail.x + random(-4, 4),
+        y: tail.y + random(-4, 4),
+
+        vx: random(-0.5, 0.5),
+        vy: random(-1.2, 0.2),
+
+        size: random(1, 3),
+
+        life: 1,
+
+        rotation: random(0, Math.PI),
+
+        color: Math.random() > 0.5
+            ? "#ff69b4"
+            : "#8fffff"
+    });
+
+}
+
+
+// ======================================================
+// UPDATE SPARKLES
+// ======================================================
+
+function updateSparkles() {
+
+    if (Math.random() < 0.45) {
+        createSparkle();
+    }
+
+    for (let i = sparkles.length - 1; i >= 0; i--) {
+
+        const p = sparkles[i];
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        p.life -= 0.018;
+
+        p.rotation += 0.05;
+
+        if (p.life <= 0) {
+            sparkles.splice(i, 1);
         }
 
-        current.angle = Math.atan2(
-            previous.y - current.y,
-            previous.x - current.x
-        );
     }
+
 }
 
 
-// ========================================
-// GLOW
-// ========================================
+// ======================================================
+// DRAW SPARKLE
+// ======================================================
 
-function createGlow() {
+function drawSparkle(p) {
+
+    ctx.save();
+
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rotation);
+
+    ctx.globalAlpha = p.life;
+
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = p.color;
+
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = 1.2;
+
+    ctx.beginPath();
+
+    ctx.moveTo(-p.size * 2, 0);
+    ctx.lineTo(p.size * 2, 0);
+
+    ctx.moveTo(0, -p.size * 2);
+    ctx.lineTo(0, p.size * 2);
+
+    ctx.stroke();
+
+    ctx.restore();
+
+}
+
+
+// ======================================================
+// FAIRY WINGS
+// ======================================================
+
+function drawWing(index, side) {
+
+    const p = dragon[index];
+
+    if (!p) return;
+
+    const pulse =
+        Math.sin(Date.now() * 0.006 + index) * 3;
+
+    const wingSize =
+        27 - index * 0.45;
+
+    if (wingSize < 7) return;
+
+    ctx.save();
+
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.angle);
+
+    ctx.globalAlpha = 0.65;
 
     ctx.shadowBlur = 25;
-    ctx.shadowColor = "cyan";
+    ctx.shadowColor = "#ff69b4";
+
+    const gradient = ctx.createLinearGradient(
+        0,
+        0,
+        wingSize,
+        side * wingSize
+    );
+
+    gradient.addColorStop(
+        0,
+        "rgba(255,105,180,0.75)"
+    );
+
+    gradient.addColorStop(
+        0.45,
+        "rgba(175,120,255,0.55)"
+    );
+
+    gradient.addColorStop(
+        1,
+        "rgba(0,255,255,0)"
+    );
+
+    ctx.fillStyle = gradient;
+
+    // TOP WING
+
+    ctx.beginPath();
+
+    ctx.moveTo(0, 0);
+
+    ctx.bezierCurveTo(
+        wingSize * 0.25,
+        side * (wingSize + pulse),
+        wingSize * 0.95,
+        side * (wingSize * 1.4),
+        wingSize * 1.35,
+        side * (wingSize * 0.45)
+    );
+
+    ctx.bezierCurveTo(
+        wingSize * 0.9,
+        side * (wingSize * 0.25),
+        wingSize * 0.4,
+        side * (wingSize * 0.1),
+        0,
+        0
+    );
+
+    ctx.fill();
+
+
+    // WING VEINS
+
+    ctx.globalAlpha = 0.55;
+
+    ctx.strokeStyle = "#ff9ddd";
+    ctx.lineWidth = 0.8;
+
+    ctx.beginPath();
+
+    ctx.moveTo(2, 0);
+
+    ctx.lineTo(
+        wingSize * 1.05,
+        side * wingSize * 0.45
+    );
+
+    ctx.moveTo(4, 0);
+
+    ctx.lineTo(
+        wingSize * 0.85,
+        side * wingSize * 0.85
+    );
+
+    ctx.stroke();
+
+    ctx.restore();
+
 }
 
 
-// ========================================
-// DRAW BODY
-// ========================================
+// ======================================================
+// BODY
+// ======================================================
 
 function drawBody() {
 
-    for (let i = SEGMENTS - 1; i > 0; i--) {
+    for (
+        let i = SEGMENTS - 1;
+        i >= 1;
+        i--
+    ) {
 
-        const p = points[i];
+        const p = dragon[i];
 
         const progress = i / SEGMENTS;
 
         const size =
-            11 * (1 - progress) + 3;
+            10 * (1 - progress) + 2.5;
 
         ctx.save();
 
         ctx.translate(p.x, p.y);
+
         ctx.rotate(p.angle);
 
-        createGlow();
+        ctx.shadowBlur = 18;
 
-        // Body
+        ctx.shadowColor = "#00ffff";
+
+        const gradient = ctx.createLinearGradient(
+            -size,
+            0,
+            size,
+            0
+        );
+
+        // ORIGINAL BEAUTIFUL GRADIENT
+        gradient.addColorStop(
+            0,
+            "#00ffff"
+        );
+
+        gradient.addColorStop(
+            0.5,
+            "#00eaff"
+        );
+
+        gradient.addColorStop(
+            1,
+            "#35ffb0"
+        );
+
+        ctx.fillStyle = gradient;
+
         ctx.beginPath();
 
         ctx.ellipse(
@@ -175,312 +401,424 @@ function drawBody() {
             Math.PI * 2
         );
 
-        const gradient = ctx.createLinearGradient(
-            -size,
-            0,
-            size,
-            0
-        );
-gradient.addColorStop(0, "#00ffff");
-gradient.addColorStop(0.5, "#00eaff");
-gradient.addColorStop(1, "#35ffb0");
-        
-
-        ctx.fillStyle = gradient;
         ctx.fill();
 
         ctx.restore();
+
     }
+
 }
 
 
-// ========================================
-// DRAW FINS
-// ========================================
+// ======================================================
+// TAIL
+// ======================================================
 
-function drawFin(index, side) {
-
-    const p = points[index];
-
-    if (!p) return;
-
-    const size = 28 - index * 0.6;
-
-    if (size <= 5) return;
+function drawTail() {
 
     ctx.save();
 
-    ctx.translate(p.x, p.y);
-    ctx.rotate(p.angle);
+    ctx.lineCap = "round";
 
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = "#00ff88";
+    ctx.lineWidth = 3;
 
-    const wave =
-        Math.sin(Date.now() * 0.004 + index) * 4;
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = "#35ffb0";
 
     ctx.beginPath();
 
-    ctx.moveTo(0, 0);
-
-    ctx.quadraticCurveTo(
-        size * 0.3,
-        side * (size + wave),
-        size * 1.3,
-        side * (size * 0.4)
+    ctx.moveTo(
+        dragon[20].x,
+        dragon[20].y
     );
 
-    ctx.quadraticCurveTo(
-        size * 0.7,
-        side * (size * 0.15),
-        0,
-        0
-    );
+    for (let i = 21; i < SEGMENTS; i++) {
 
-    const gradient = ctx.createLinearGradient(
-        0,
-        0,
-        size,
-        side * size
-    );
+        ctx.lineTo(
+            dragon[i].x,
+            dragon[i].y
+        );
 
-    gradient.addColorStop(0, "rgba(0,255,150,0.8)");
-    gradient.addColorStop(1, "rgba(0,255,80,0)");
+    }
 
-    ctx.fillStyle = gradient;
+    ctx.strokeStyle =
+        "rgba(80,255,220,0.65)";
 
-    ctx.fill();
+    ctx.stroke();
 
     ctx.restore();
+
 }
 
 
-// ========================================
-// DRAW HEAD
-// ========================================
+// ======================================================
+// CUTE DRAGON HEAD
+// ======================================================
 
 function drawHead() {
 
-    const head = points[0];
+    const head = dragon[0];
 
     ctx.save();
 
     ctx.translate(head.x, head.y);
+
     ctx.rotate(head.angle);
 
-    // Outer glow
-    ctx.shadowBlur = 35;
-    ctx.shadowColor = "#00ffff";
 
-    // Head
+    // --------------------------------------------------
+    // FAIRY GLOW
+    // --------------------------------------------------
+
+    ctx.shadowBlur = 35;
+    ctx.shadowColor = "#ff69b4";
+
+
+    // --------------------------------------------------
+    // BACK HAIR / MANE
+    // --------------------------------------------------
+
+    const hairGradient =
+        ctx.createLinearGradient(
+            -15,
+            -15,
+            15,
+            15
+        );
+
+    hairGradient.addColorStop(
+        0,
+        "#ff69b4"
+    );
+
+    hairGradient.addColorStop(
+        0.5,
+        "#c77dff"
+    );
+
+    hairGradient.addColorStop(
+        1,
+        "#6ffcff"
+    );
+
+    ctx.fillStyle = hairGradient;
+
+    ctx.beginPath();
+
+    ctx.moveTo(-10, -8);
+
+    ctx.quadraticCurveTo(
+        -23,
+        -18,
+        -16,
+        -3
+    );
+
+    ctx.quadraticCurveTo(
+        -25,
+        3,
+        -12,
+        7
+    );
+
+    ctx.quadraticCurveTo(
+        -20,
+        14,
+        -7,
+        11
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    // --------------------------------------------------
+    // CUTE HEAD
+    // --------------------------------------------------
+
+    const faceGradient =
+        ctx.createRadialGradient(
+            -5,
+            -5,
+            2,
+            0,
+            0,
+            20
+        );
+
+    faceGradient.addColorStop(
+        0,
+        "#ffffff"
+    );
+
+    faceGradient.addColorStop(
+        0.25,
+        "#9fffff"
+    );
+
+    faceGradient.addColorStop(
+        0.65,
+        "#32e8e8"
+    );
+
+    faceGradient.addColorStop(
+        1,
+        "#087c9c"
+    );
+
+    ctx.fillStyle = faceGradient;
+
     ctx.beginPath();
 
     ctx.ellipse(
         0,
         0,
-        16,
-        10,
+        17,
+        12,
         0,
         0,
         Math.PI * 2
     );
 
-    const headGradient = ctx.createRadialGradient(
-        -4,
-        -3,
-        1,
-        0,
-        0,
-        18
-    );
-
-    headGradient.addColorStop(0, "#ffffff");
-    headGradient.addColorStop(0.25, "#00ffff");
-    headGradient.addColorStop(0.7, "#00d9d9");
-    headGradient.addColorStop(1, "#003333");
-
-    ctx.fillStyle = headGradient;
     ctx.fill();
 
 
-    // Snout
+    // --------------------------------------------------
+    // CUTE EARS
+    // --------------------------------------------------
+
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = "#ff69b4";
+
+    ctx.fillStyle = "#ff8fcf";
+
+    // Upper ear
+
     ctx.beginPath();
 
-    ctx.moveTo(10, -5);
-    ctx.lineTo(25, 0);
-    ctx.lineTo(10, 5);
+    ctx.moveTo(-8, -8);
+
+    ctx.lineTo(-13, -20);
+
+    ctx.lineTo(-3, -12);
+
     ctx.closePath();
 
-    ctx.fillStyle = "#00ffff";
     ctx.fill();
 
 
-    // Eye
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "yellow";
+    // Lower ear
+
+    ctx.beginPath();
+
+    ctx.moveTo(-8, 8);
+
+    ctx.lineTo(-13, 20);
+
+    ctx.lineTo(-3, 12);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    // --------------------------------------------------
+    // LITTLE HORNS
+    // --------------------------------------------------
+
+    ctx.fillStyle = "#ffe5ff";
+
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "#c77dff";
+
+    ctx.beginPath();
+
+    ctx.moveTo(-3, -9);
+
+    ctx.quadraticCurveTo(
+        0,
+        -18,
+        5,
+        -13
+    );
+
+    ctx.lineTo(3, -7);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    // --------------------------------------------------
+    // SNOUT
+    // --------------------------------------------------
+
+    ctx.fillStyle = "#75ffff";
+
+    ctx.beginPath();
+
+    ctx.moveTo(11, -5);
+
+    ctx.quadraticCurveTo(
+        19,
+        0,
+        11,
+        5
+    );
+
+    ctx.quadraticCurveTo(
+        8,
+        0,
+        11,
+        -5
+    );
+
+    ctx.fill();
+
+
+    // --------------------------------------------------
+    // EYE
+    // --------------------------------------------------
+
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "#ff69b4";
 
     ctx.beginPath();
 
     ctx.arc(
-        4,
+        5,
         -5,
+        4,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "#fff5ff";
+
+    ctx.fill();
+
+
+    // Pupil
+
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = "#ff1493";
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        6,
+        -5,
+        1.2,
+        3,
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "#ff1493";
+
+    ctx.fill();
+
+
+    // --------------------------------------------------
+    // LITTLE SMILE
+    // --------------------------------------------------
+
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = "#ff69b4";
+
+    ctx.strokeStyle = "#ff69b4";
+    ctx.lineWidth = 1.2;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        10,
+        2,
+        4,
+        0.1,
+        Math.PI * 0.7
+    );
+
+    ctx.stroke();
+
+
+    // --------------------------------------------------
+    // PINK CHEEK
+    // --------------------------------------------------
+
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "#ff69b4";
+
+    ctx.fillStyle =
+        "rgba(255,105,180,0.7)";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        8,
+        6,
         2.5,
         0,
         Math.PI * 2
     );
 
-    ctx.fillStyle = "#ffff00";
-    ctx.fill();
-
-
-    // Eye pupil
-    ctx.shadowBlur = 0;
-
-    ctx.beginPath();
-
-    ctx.arc(
-        4,
-        -5,
-        1,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fillStyle = "#000";
     ctx.fill();
 
 
     ctx.restore();
+
 }
 
 
-// ========================================
-// DRAW TAIL
-// ========================================
+// ======================================================
+// LITTLE FAIRY CROWN
+// ======================================================
 
-function drawTail() {
+function drawCrown() {
 
-    const tailStart = Math.floor(SEGMENTS * 0.7);
+    const p = dragon[0];
 
     ctx.save();
 
-    ctx.lineWidth = 3;
+    ctx.translate(p.x, p.y);
 
-    ctx.lineCap = "round";
+    ctx.rotate(p.angle);
 
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = "#00ffff";
+    ctx.globalAlpha = 0.9;
+
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = "#ffd6ff";
+
+    ctx.strokeStyle = "#ffe8ff";
+    ctx.lineWidth = 1.5;
 
     ctx.beginPath();
 
-    ctx.moveTo(
-        points[tailStart].x,
-        points[tailStart].y
-    );
+    ctx.moveTo(-5, -12);
 
-    for (
-        let i = tailStart + 1;
-        i < SEGMENTS;
-        i++
-    ) {
+    ctx.lineTo(-2, -18);
 
-        ctx.lineTo(
-            points[i].x,
-            points[i].y
-        );
-    }
+    ctx.lineTo(2, -13);
 
-    ctx.strokeStyle = "rgba(0,255,255,0.7)";
+    ctx.lineTo(6, -19);
+
+    ctx.lineTo(9, -10);
 
     ctx.stroke();
 
     ctx.restore();
+
 }
 
 
-// ========================================
-// PARTICLES
-// ========================================
-
-const particles = [];
-
-function createParticle() {
-
-    const tail = points[SEGMENTS - 1];
-
-    particles.push({
-        x: tail.x,
-        y: tail.y,
-
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: (Math.random() - 0.5) * 1.5,
-
-        life: 1,
-
-        size: Math.random() * 3 + 1
-    });
-}
-
-
-function updateParticles() {
-
-    if (Math.random() < 0.35) {
-        createParticle();
-    }
-
-    for (let i = particles.length - 1; i >= 0; i--) {
-
-        const p = particles[i];
-
-        p.x += p.vx;
-        p.y += p.vy;
-
-        p.life -= 0.025;
-
-        if (p.life <= 0) {
-            particles.splice(i, 1);
-        }
-    }
-}
-
-
-function drawParticles() {
-
-    for (const p of particles) {
-
-        ctx.save();
-
-        ctx.globalAlpha = p.life;
-
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "#00ffff";
-
-        ctx.beginPath();
-
-        ctx.arc(
-            p.x,
-            p.y,
-            p.size,
-            0,
-            Math.PI * 2
-        );
-
-        ctx.fillStyle = "#00ffff";
-
-        ctx.fill();
-
-        ctx.restore();
-    }
-}
-
-
-// ========================================
+// ======================================================
 // MAIN ANIMATION
-// ========================================
+// ======================================================
 
 function animate() {
 
-    // Clear screen
     ctx.clearRect(
         0,
         0,
@@ -488,28 +826,50 @@ function animate() {
         height
     );
 
+
     updateDragon();
 
-    updateParticles();
+    updateSparkles();
 
-    drawParticles();
+
+    // Wings behind body
+
+    drawWing(4, -1);
+    drawWing(4, 1);
+
+    drawWing(8, -1);
+    drawWing(8, 1);
+
+    drawWing(13, -1);
+    drawWing(13, 1);
+
+
+    // Body
 
     drawTail();
 
     drawBody();
 
-    // Fins
-    drawFin(7, -1);
-    drawFin(7, 1);
 
-    drawFin(13, -1);
-    drawFin(13, 1);
+    // Head wings
 
-    drawFin(19, -1);
-    drawFin(19, 1);
+    drawWing(1, -1);
+    drawWing(1, 1);
+
 
     // Head
+
     drawHead();
+
+    drawCrown();
+
+
+    // Sparkles
+
+    for (const sparkle of sparkles) {
+        drawSparkle(sparkle);
+    }
+
 
     requestAnimationFrame(animate);
 }
