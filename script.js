@@ -181,10 +181,10 @@ function drawBody() {
             size,
             0
         );
-
-        gradient.addColorStop(0, "#FF1493");
-gradient.addColorStop(0.5, "#FF1493");
-gradient.addColorStop(1, "#FF1493");
+gradient.addColorStop(0, "#00ffff");
+gradient.addColorStop(0.5, "#00eaff");
+gradient.addColorStop(1, "#35ffb0");
+        
 
         ctx.fillStyle = gradient;
         ctx.fill();
