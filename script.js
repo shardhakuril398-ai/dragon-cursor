@@ -244,7 +244,7 @@ function drawWing(index, side) {
         65 - index * 0.7;
 
     const wingWidth =
-        38 - index * 0.35;
+        28 - index * 0.25;
 
     if (wingLength < 18) return;
 
