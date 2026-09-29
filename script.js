@@ -237,38 +237,48 @@ function drawWing(index, side) {
     if (!p) return;
 
     const pulse =
-        Math.sin(Date.now() * 0.006 + index) * 3;
+        Math.sin(Date.now() * 0.006 + index) * 4;
 
-    const wingSize =
-        27 - index * 0.45;
+    // ✨ MUCH LONGER FAIRY WINGS
+    const wingLength =
+        65 - index * 0.7;
 
-    if (wingSize < 7) return;
+    const wingWidth =
+        38 - index * 0.35;
+
+    if (wingLength < 18) return;
 
     ctx.save();
 
     ctx.translate(p.x, p.y);
     ctx.rotate(p.angle);
 
-    ctx.globalAlpha = 0.65;
+    ctx.globalAlpha = 0.72;
 
-    ctx.shadowBlur = 25;
+    // Pink fairy glow
+    ctx.shadowBlur = 32;
     ctx.shadowColor = "#ff69b4";
 
     const gradient = ctx.createLinearGradient(
         0,
         0,
-        wingSize,
-        side * wingSize
+        wingLength,
+        side * wingWidth
     );
 
     gradient.addColorStop(
         0,
-        "rgba(255,105,180,0.75)"
+        "rgba(255,105,180,0.85)"
     );
 
     gradient.addColorStop(
-        0.45,
-        "rgba(175,120,255,0.55)"
+        0.35,
+        "rgba(218,130,255,0.65)"
+    );
+
+    gradient.addColorStop(
+        0.7,
+        "rgba(130,220,255,0.45)"
     );
 
     gradient.addColorStop(
@@ -278,26 +288,42 @@ function drawWing(index, side) {
 
     ctx.fillStyle = gradient;
 
-    // TOP WING
+
+    // 🧚 LONG UPPER FAIRY WING
 
     ctx.beginPath();
 
     ctx.moveTo(0, 0);
 
     ctx.bezierCurveTo(
-        wingSize * 0.25,
-        side * (wingSize + pulse),
-        wingSize * 0.95,
-        side * (wingSize * 1.4),
-        wingSize * 1.35,
-        side * (wingSize * 0.45)
+        wingLength * 0.18,
+        side * (wingWidth * 0.8 + pulse),
+
+        wingLength * 0.45,
+        side * (wingWidth * 1.7),
+
+        wingLength * 0.95,
+        side * (wingWidth * 1.35)
     );
 
     ctx.bezierCurveTo(
-        wingSize * 0.9,
-        side * (wingSize * 0.25),
-        wingSize * 0.4,
-        side * (wingSize * 0.1),
+        wingLength * 1.35,
+        side * (wingWidth * 0.95),
+
+        wingLength * 1.18,
+        side * (wingWidth * 0.35),
+
+        wingLength * 0.65,
+        side * (wingWidth * 0.18)
+    );
+
+    ctx.bezierCurveTo(
+        wingLength * 0.3,
+        side * (wingWidth * 0.08),
+
+        wingLength * 0.12,
+        side * (wingWidth * 0.05),
+
         0,
         0
     );
@@ -305,33 +331,108 @@ function drawWing(index, side) {
     ctx.fill();
 
 
-    // WING VEINS
+    // 🦋 SECOND LONG LOWER WING
 
-    ctx.globalAlpha = 0.55;
-
-    ctx.strokeStyle = "#ff9ddd";
-    ctx.lineWidth = 0.8;
+    ctx.globalAlpha = 0.48;
 
     ctx.beginPath();
 
+    ctx.moveTo(0, 2);
+
+    ctx.bezierCurveTo(
+        wingLength * 0.25,
+        side * (wingWidth * 0.25),
+
+        wingLength * 0.65,
+        side * (wingWidth * 0.55),
+
+        wingLength * 1.05,
+        side * (wingWidth * 0.15)
+    );
+
+    ctx.bezierCurveTo(
+        wingLength * 0.9,
+        side * (wingWidth * 0.05),
+
+        wingLength * 0.35,
+        side * (wingWidth * 0.02),
+
+        0,
+        2
+    );
+
+    ctx.fill();
+
+
+    // ✨ FAIRY WING VEINS
+
+    ctx.globalAlpha = 0.7;
+
+    ctx.shadowBlur = 10;
+
+    ctx.strokeStyle = "#ffb5e8";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+
+    // Main vein
     ctx.moveTo(2, 0);
 
     ctx.lineTo(
-        wingSize * 1.05,
-        side * wingSize * 0.45
+        wingLength * 0.95,
+        side * wingWidth * 1.25
     );
 
-    ctx.moveTo(4, 0);
+    // Upper vein
+    ctx.moveTo(3, 0);
 
     ctx.lineTo(
-        wingSize * 0.85,
-        side * wingSize * 0.85
+        wingLength * 0.75,
+        side * wingWidth * 0.65
+    );
+
+    // Lower vein
+    ctx.moveTo(3, 1);
+
+    ctx.lineTo(
+        wingLength * 0.85,
+        side * wingWidth * 0.2
     );
 
     ctx.stroke();
 
-    ctx.restore();
 
+    // ✨ Tiny glowing dots on wings
+
+    ctx.fillStyle = "#ffffff";
+
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "#ffffff";
+
+    for (let i = 0; i < 4; i++) {
+
+        const x =
+            wingLength * (0.35 + i * 0.15);
+
+        const y =
+            side *
+            wingWidth *
+            (0.35 + Math.sin(i) * 0.25);
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            1.2,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    }
+
+    ctx.restore();
 }
 
 
